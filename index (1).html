@@ -1,0 +1,1814 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AhmdFIT - Pengingat, Checklist Olahraga & Rekomendasi Makanan Diet</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        },
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Canvas Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-blue-500 selection:text-white">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        
+        // Web Audio API Beep Generator for Timers and Reminders
+        const playBeep = (freq = 600, duration = 0.15, type = 'sine') => {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.log("Audio play blocked or not supported", e);
+            }
+        };
+
+        // Fallback default exercise illustration images based on category
+        const CATEGORY_IMAGES = {
+            'Kardio': 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80',
+            'Full Body': 'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?w=600&auto=format&fit=crop&q=80',
+            'Core & Kardio': 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&auto=format&fit=crop&q=80',
+            'Core': 'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=600&auto=format&fit=crop&q=80',
+            'Kaki': 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&auto=format&fit=crop&q=80',
+            'Kaki & Glutes': 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&auto=format&fit=crop&q=80',
+            'Dada & Triceps': 'https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=600&auto=format&fit=crop&q=80',
+            'Punggung': 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80',
+            'Bahu': 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=600&auto=format&fit=crop&q=80',
+            'Triceps': 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&auto=format&fit=crop&q=80',
+            'Warmup': 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&auto=format&fit=crop&q=80',
+            'Cooldown': 'https://images.unsplash.com/photo-1552196563-55cd4e45efb3?w=600&auto=format&fit=crop&q=80',
+            'Makanan': 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=600&auto=format&fit=crop&q=80',
+            'Kustom': 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80'
+        };
+
+        const PRESET_PROGRAMS = [
+            {
+                id: 'diet_fat_loss',
+                category: 'Diet & Fat Loss',
+                title: 'Program Pembakaran Lemak & Diet (HIIT)',
+                badge: 'Sangat Efektif Turunkan Berat Badan',
+                icon: 'flame',
+                color: 'from-blue-600 to-cyan-500',
+                description: 'Latihan intensitas tinggi untuk membakar kalori secara maksimal dalam waktu singkat dan meningkatkan metabolisme.',
+                targetGoal: 'Mengurangi persentase lemak tubuh, membakar 300-500 kalori per sesi.',
+                recommendedDays: '3 - 5 kali seminggu',
+                exercises: [
+                    { 
+                        id: 'hiit_1', 
+                        name: 'Jumping Jacks', 
+                        category: 'Kardio', 
+                        duration: 45, 
+                        rest: 15, 
+                        sets: 3, 
+                        calories: 40, 
+                        image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Lompat sambil membuka tangan dan kaki secara ritmis untuk memacu detak jantung.' 
+                    },
+                    { 
+                        id: 'hiit_2', 
+                        name: 'Burpees', 
+                        category: 'Full Body', 
+                        reps: 12, 
+                        sets: 3, 
+                        rest: 30, 
+                        calories: 60, 
+                        image: 'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Dari posisi berdiri, jongkok, push-up, lalu melompat ke atas dengan penuh tenaga.' 
+                    },
+                    { 
+                        id: 'hiit_3', 
+                        name: 'Mountain Climbers', 
+                        category: 'Core & Kardio', 
+                        duration: 40, 
+                        rest: 20, 
+                        sets: 3, 
+                        calories: 45, 
+                        image: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Posisi plank, gerakkan lutut bergantian menuju dada secara cepat seperti mendaki.' 
+                    },
+                    { 
+                        id: 'hiit_4', 
+                        name: 'High Knees', 
+                        category: 'Kardio', 
+                        duration: 40, 
+                        rest: 20, 
+                        sets: 3, 
+                        calories: 50, 
+                        image: 'https://images.unsplash.com/photo-1538805060514-97d9cc17730c?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Lari di tempat dengan mengangkat lutut setinggi pinggul secara bergantian.' 
+                    },
+                    { 
+                        id: 'hiit_5', 
+                        name: 'Bodyweight Squats', 
+                        category: 'Kaki', 
+                        reps: 20, 
+                        sets: 3, 
+                        rest: 25, 
+                        calories: 35, 
+                        image: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Turunkan pinggul seperti hendak duduk di kursi, pastikan punggung tetap lurus.' 
+                    },
+                    { 
+                        id: 'hiit_6', 
+                        name: 'Plank Hold', 
+                        category: 'Core', 
+                        duration: 45, 
+                        rest: 30, 
+                        sets: 3, 
+                        calories: 20, 
+                        image: 'https://images.unsplash.com/photo-1566241142559-40e1dab266c6?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Tahan posisi tubuh lurus bertumpu pada lengan bawah dan ujung kaki.' 
+                    }
+                ]
+            },
+            {
+                id: 'muscle_building',
+                category: 'Menambah Massa Otot',
+                title: 'Program Pembentukan & Massa Otot (Hypertrophy)',
+                badge: 'Formasi Otot & Kekuatan',
+                icon: 'biceps-flexed',
+                color: 'from-blue-700 to-indigo-600',
+                description: 'Fokus pada beban progresif dan stimulasi serat otot untuk merangsang pertumbuhan massa otot.',
+                targetGoal: 'Meningkatkan massa otot, membentuk postur tubuh, dan menambah kekuatan fisik.',
+                recommendedDays: '4 - 5 kali seminggu (Split Push/Pull/Legs)',
+                exercises: [
+                    { 
+                        id: 'mus_1', 
+                        name: 'Push-Up (Variasi Standar/Wide)', 
+                        category: 'Dada & Triceps', 
+                        reps: 15, 
+                        sets: 4, 
+                        rest: 45, 
+                        calories: 30, 
+                        image: 'https://images.unsplash.com/photo-1598971639058-fab3c3109a00?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Tekan tubuh dari lantai dengan menjaga posisi inti tegap dan siku melipat 45 derajat.' 
+                    },
+                    { 
+                        id: 'mus_2', 
+                        name: 'Dumbbell / Water Bottle Rows', 
+                        category: 'Punggung', 
+                        reps: 12, 
+                        sets: 4, 
+                        rest: 45, 
+                        calories: 35, 
+                        image: 'https://images.unsplash.com/photo-1581009146145-b5ef050c2e1e?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Bungkukkan badan, tarik beban mendekati pinggang sambil menjepit otot belikat.' 
+                    },
+                    { 
+                        id: 'mus_3', 
+                        name: 'Goblet Squat (Beban)', 
+                        category: 'Kaki & Glutes', 
+                        reps: 12, 
+                        sets: 4, 
+                        rest: 60, 
+                        calories: 40, 
+                        image: 'https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Pegang beban di depan dada, lakukan gerakan jongkok sedalam mungkin dengan stabil.' 
+                    },
+                    { 
+                        id: 'mus_4', 
+                        name: 'Pike Push-Ups', 
+                        category: 'Bahu', 
+                        reps: 10, 
+                        sets: 3, 
+                        rest: 45, 
+                        calories: 25, 
+                        image: 'https://images.unsplash.com/photo-1541534741688-6078c6bfb5c5?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Posisi pinggul terangkat membentuk V terbalik, dorong kepala mendekati lantai.' 
+                    },
+                    { 
+                        id: 'mus_5', 
+                        name: 'Walking Lunges', 
+                        category: 'Kaki', 
+                        reps: 12, 
+                        sets: 3, 
+                        rest: 45, 
+                        calories: 30, 
+                        image: 'https://images.unsplash.com/photo-1434682881908-b43d0467b798?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Melangkah ke depan dan tekuk kedua lutut membentuk sudut 90 derajat secara bergantian.' 
+                    },
+                    { 
+                        id: 'mus_6', 
+                        name: 'Triceps Chair Dips', 
+                        category: 'Triceps', 
+                        reps: 15, 
+                        sets: 3, 
+                        rest: 40, 
+                        calories: 25, 
+                        image: 'https://images.unsplash.com/photo-1583454110551-21f2fa2afe61?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Gunakan kursi/bangku, turunkan pinggul lalu dorong kembali naik dengan kekuatan triceps.' 
+                    }
+                ]
+            },
+            {
+                id: 'running_stamina',
+                category: 'Lari & Ketahanan',
+                title: 'Program Lari & Ketahanan Jantung',
+                badge: 'Stamina & Kesehatan Jantung',
+                icon: 'footprints',
+                color: 'from-blue-500 to-teal-500',
+                description: 'Panduan latihan lari bertahap dari pemula hingga menengah untuk melatih VO2 max dan daya tahan kardiovaskular.',
+                targetGoal: 'Meningkatkan ketahanan jantung, membakar lemak secara efisien, dan menyegarkan pikiran.',
+                recommendedDays: '3 kali seminggu (Selang-seling hari istirahat)',
+                exercises: [
+                    { 
+                        id: 'run_1', 
+                        name: 'Pemanasan Dinamis (Dynamic Stretch)', 
+                        category: 'Warmup', 
+                        duration: 300, 
+                        rest: 30, 
+                        sets: 1, 
+                        calories: 25, 
+                        image: 'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Ayunan kaki, putaran engkel, dan jogging ringan tempat untuk menyiapkan persendian.' 
+                    },
+                    { 
+                        id: 'run_2', 
+                        name: 'Lari Interval (Interval Run)', 
+                        category: 'Kardio', 
+                        duration: 1200, 
+                        rest: 120, 
+                        sets: 1, 
+                        calories: 220, 
+                        image: 'https://images.unsplash.com/photo-1476480862126-209bfaa8edc8?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Lari cepat 1 menit dilanjutkan jalan santai 2 menit (Ulangi 6-8x putaran).' 
+                    },
+                    { 
+                        id: 'run_3', 
+                        name: 'Jalan Cepat / Cool Down Walk', 
+                        category: 'Kardio', 
+                        duration: 600, 
+                        rest: 0, 
+                        sets: 1, 
+                        calories: 40, 
+                        image: 'https://images.unsplash.com/photo-1517838277536-f5f99be501cd?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Jalan santai untuk menurunkan detak jantung dan pernapasan secara perlahan.' 
+                    },
+                    { 
+                        id: 'run_4', 
+                        name: 'Pendinginan & Peregangan Statis', 
+                        category: 'Cooldown', 
+                        duration: 300, 
+                        rest: 0, 
+                        sets: 1, 
+                        calories: 15, 
+                        image: 'https://images.unsplash.com/photo-1552196563-55cd4e45efb3?w=600&auto=format&fit=crop&q=80',
+                        desc: 'Peregangan otot paha, betis, dan punggung bawah untuk mencegah kekakuan otot.' 
+                    }
+                ]
+            }
+        ];
+
+        const PRESET_MEALS = [
+            {
+                id: 'meal_plan_diet',
+                category: 'Defisit Kalori (Diet & Fat Loss)',
+                targetCal: 1600,
+                description: 'Menu tinggi protein dan serat, rendah lemak jenuh untuk membantu pembakaran lemak tubuh secara optimal.',
+                items: [
+                    { id: 'm1', name: 'Oatmeal Pisang & Chia Seeds', mealType: 'Sarapan', calories: 320, protein: 12, carbs: 55, fat: 5, image: 'https://images.unsplash.com/photo-1517673400267-0251440c45dc?w=600&auto=format&fit=crop&q=80', desc: 'Oatmeal hangat disajikan dengan irisan pisang segar dan taburan chia seeds.' },
+                    { id: 'm2', name: 'Dada Ayam Panggang & Nasi Merah', mealType: 'Makan Siang', calories: 480, protein: 42, carbs: 45, fat: 8, image: 'https://images.unsplash.com/photo-1532550907401-a500c9a57435?w=600&auto=format&fit=crop&q=80', desc: 'Dada ayam 150g dipanggang dengan rempah herbal + tumis brokoli.' },
+                    { id: 'm3', name: 'Salad Alpukat & Telur Rebus', mealType: 'Makan Malam', calories: 350, protein: 18, carbs: 15, fat: 22, image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&auto=format&fit=crop&q=80', desc: 'Sayuran hijau segar, 2 butir telur rebus, alpukat, dan perasan jeruk lemon.' },
+                    { id: 'm4', name: 'Greek Yogurt & Beri Segar', mealType: 'Camilan Sehat', calories: 180, protein: 15, carbs: 20, fat: 2, image: 'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&auto=format&fit=crop&q=80', desc: 'Yogurt tinggi protein tanpa gula tambahan dengan topping buah beri.' }
+                ]
+            },
+            {
+                id: 'meal_plan_muscle',
+                category: 'Surplus Terkontrol (Pembentukan Massa Otot)',
+                targetCal: 2400,
+                description: 'Asupan makronutrisi kaya protein tinggi untuk mempercepat pemulihan dan merangsang pertumbuhan serat otot.',
+                items: [
+                    { id: 'm5', name: 'Omelet 3 Telur + Roti Gandum & Keju', mealType: 'Sarapan', calories: 520, protein: 28, carbs: 40, fat: 22, image: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=600&auto=format&fit=crop&q=80', desc: 'Telur dadar isi bayam dan keju disajikan dengan 2 tangkap roti gandum utuh.' },
+                    { id: 'm6', name: 'Nasi Merah + Daging Sapi Lada Hitam', mealType: 'Makan Siang', calories: 650, protein: 45, carbs: 65, fat: 18, image: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600&auto=format&fit=crop&q=80', desc: 'Daging sapi tanpa lemak 150g dengan bumbu lada hitam ringan dan porsi nasi cukup.' },
+                    { id: 'm7', name: 'Salmon Panggang & Kentang Rebus', mealType: 'Makan Malam', calories: 580, protein: 38, carbs: 45, fat: 20, image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=600&auto=format&fit=crop&q=80', desc: 'Fillet salmon kaya Omega-3 dipanggang lembut bersama kentang dan asparagus.' },
+                    { id: 'm8', name: 'Smoothie Protein Selai Kacang & Pisang', mealType: 'Camilan Sehat', calories: 380, protein: 25, carbs: 45, fat: 12, image: 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=600&auto=format&fit=crop&q=80', desc: 'Susu UHT / Whey protein diblend dengan 1 sendok makan selai kacang dan pisang.' }
+                ]
+            },
+            {
+                id: 'meal_plan_endurance',
+                category: 'Karbohidrat Kompleks & Energi (Lari / Endurance)',
+                targetCal: 2000,
+                description: 'Nutrisi untuk mengisi glikogen otot, mendukung performa lari, dan menjaga ketahanan kardiovaskular.',
+                items: [
+                    { id: 'm9', name: 'Roti Gandum Selai Kacang & Pisang', mealType: 'Sarapan / Pre-Workout', calories: 380, protein: 12, carbs: 58, fat: 12, image: 'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=600&auto=format&fit=crop&q=80', desc: 'Sumber energi cepat saji sebelum atau sesudah lari pagi.' },
+                    { id: 'm10', name: 'Spaghetti Whole-Wheat Bolognese Ayam', mealType: 'Makan Siang', calories: 580, protein: 35, carbs: 75, fat: 12, image: 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=600&auto=format&fit=crop&q=80', desc: 'Pasta gandum utuh dengan saus tomat segar dan cincangan dada ayam.' },
+                    { id: 'm11', name: 'Tumis Tahu Tempe & Sayur Capcay Nasi Merah', mealType: 'Makan Malam', calories: 420, protein: 22, carbs: 55, fat: 10, image: 'https://images.unsplash.com/photo-1540420773420-3366772f4999?w=600&auto=format&fit=crop&q=80', desc: 'Menu tinggi protein nabati dan kaya mineral sayuran segar.' },
+                    { id: 'm12', name: 'Jus Alpukat Tanpa Gula & Kacang Almond', mealType: 'Camilan Sehat', calories: 250, protein: 6, carbs: 18, fat: 18, image: 'https://images.unsplash.com/photo-1610970881699-44a5587cabec?w=600&auto=format&fit=crop&q=80', desc: 'Lemak sehat untuk mendukung daya tahan metabolisme tubuh.' }
+                ]
+            }
+        ];
+
+        function ExerciseImage({ src, category, alt, className = "w-full h-full object-cover" }) {
+            const fallbackSrc = CATEGORY_IMAGES[category] || CATEGORY_IMAGES['Kardio'];
+            const [imgSrc, setImgSrc] = React.useState(src || fallbackSrc);
+
+            React.useEffect(() => {
+                setImgSrc(src || fallbackSrc);
+            }, [src, category]);
+
+            return (
+                <img 
+                    src={imgSrc} 
+                    alt={alt || "Ilustrasi Visual"} 
+                    onError={() => setImgSrc(fallbackSrc)} 
+                    class={className}
+                    loading="lazy"
+                />
+            );
+        }
+
+        function App() {
+            const [activeTab, setActiveTab] = React.useState('dashboard');
+
+            // User Customization Profile State
+            const [userProfile, setUserProfile] = React.useState(() => {
+                const saved = localStorage.getItem('ahmd_user_profile');
+                return saved ? JSON.parse(saved) : {
+                    name: 'Ahmad Fit User',
+                    age: 25,
+                    weight: 68,
+                    height: 170,
+                    goal: 'diet_fat_loss',
+                    targetCalories: 2000,
+                    level: 'Pemula'
+                };
+            });
+
+            // Exercise Checklist State
+            const [todayChecklist, setTodayChecklist] = React.useState(() => {
+                const saved = localStorage.getItem('ahmd_today_checklist');
+                if (saved) return JSON.parse(saved);
+                return PRESET_PROGRAMS[0].exercises.map(ex => ({ ...ex, completed: false }));
+            });
+
+            // Food Log State (Daily Consumed Meals)
+            const [todayFoodLog, setTodayFoodLog] = React.useState(() => {
+                const saved = localStorage.getItem('ahmd_today_food_log');
+                if (saved) return JSON.parse(saved);
+                return PRESET_MEALS[0].items.slice(0, 2).map(m => ({ ...m, id: 'food_' + Date.now() + Math.random(), completed: true }));
+            });
+
+            // Active Workout Player Modal
+            const [activePlayer, setActivePlayer] = React.useState(null);
+
+            // Reminders Alarms State
+            const [reminders, setReminders] = React.useState(() => {
+                const saved = localStorage.getItem('ahmd_reminders');
+                return saved ? JSON.parse(saved) : [
+                    { id: '1', title: 'Lari Pagi / Cardio', time: '06:00', active: true, note: 'Gunakan sepatu lari dan siapkan air minum!' },
+                    { id: '2', title: 'Sesi Beban & Push-Up AhmdFIT', time: '17:00', active: true, note: 'Lakukan pemanasan 5 menit sebelum latihan.' }
+                ];
+            });
+
+            // Progress History Logs
+            const [workoutHistory, setWorkoutHistory] = React.useState(() => {
+                const saved = localStorage.getItem('ahmd_history');
+                return saved ? JSON.parse(saved) : [
+                    { date: '2026-07-25', calories: 240, durationMinutes: 30, completedCount: 5 },
+                    { date: '2026-07-26', calories: 310, durationMinutes: 40, completedCount: 6 },
+                    { date: '2026-07-27', calories: 180, durationMinutes: 25, completedCount: 4 }
+                ];
+            });
+
+            // Weight Log Tracker
+            const [weightLogs, setWeightLogs] = React.useState(() => {
+                const saved = localStorage.getItem('ahmd_weight_logs');
+                return saved ? JSON.parse(saved) : [
+                    { date: '2026-07-01', weight: 70.5 },
+                    { date: '2026-07-15', weight: 69.2 },
+                    { date: '2026-07-28', weight: 68.0 }
+                ];
+            });
+
+            const [streak, setStreak] = React.useState(7);
+
+            // Synchronize with LocalStorage
+            React.useEffect(() => {
+                localStorage.setItem('ahmd_user_profile', JSON.stringify(userProfile));
+            }, [userProfile]);
+
+            React.useEffect(() => {
+                localStorage.setItem('ahmd_today_checklist', JSON.stringify(todayChecklist));
+            }, [todayChecklist]);
+
+            React.useEffect(() => {
+                localStorage.setItem('ahmd_today_food_log', JSON.stringify(todayFoodLog));
+            }, [todayFoodLog]);
+
+            React.useEffect(() => {
+                localStorage.setItem('ahmd_reminders', JSON.stringify(reminders));
+            }, [reminders]);
+
+            React.useEffect(() => {
+                localStorage.setItem('ahmd_history', JSON.stringify(workoutHistory));
+            }, [workoutHistory]);
+
+            React.useEffect(() => {
+                localStorage.setItem('ahmd_weight_logs', JSON.stringify(weightLogs));
+            }, [weightLogs]);
+
+            React.useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            });
+
+            // Timer check for Reminders
+            React.useEffect(() => {
+                const interval = setInterval(() => {
+                    const now = new Date();
+                    const currentHM = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+                    if (now.getSeconds() === 0) {
+                        reminders.forEach(rem => {
+                            if (rem.active && rem.time === currentHM) {
+                                playBeep(880, 0.5, 'triangle');
+                                triggerNotification(rem.title, rem.note);
+                            }
+                        });
+                    }
+                }, 1000);
+                return () => clearInterval(interval);
+            }, [reminders]);
+
+            const triggerNotification = (title, body) => {
+                if ("Notification" in window) {
+                    if (Notification.permission === "granted") {
+                        new Notification(`⏰ AhmdFIT Reminder: ${title}`, { body, icon: 'https://cdn-icons-png.flaticon.com/512/2964/2964514.png' });
+                    } else if (Notification.permission !== "denied") {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === "granted") {
+                                new Notification(`⏰ AhmdFIT Reminder: ${title}`, { body });
+                            }
+                        });
+                    }
+                }
+            };
+
+            const toggleChecklistItem = (id) => {
+                setTodayChecklist(prev => {
+                    const updated = prev.map(item => item.id === id ? { ...item, completed: !item.completed } : item);
+                    playBeep(520, 0.1, 'sine');
+                    return updated;
+                });
+            };
+
+            const applyPresetProgram = (programId) => {
+                const selected = PRESET_PROGRAMS.find(p => p.id === programId);
+                if (selected) {
+                    setTodayChecklist(selected.exercises.map(ex => ({ ...ex, completed: false })));
+                    setUserProfile(prev => ({ ...prev, goal: programId }));
+                    playBeep(700, 0.2, 'sine');
+                    alert(`Program "${selected.title}" berhasil dimuat ke Checklist Olahraga AhmdFIT Anda!`);
+                }
+            };
+
+            // Calculate Workout Stats
+            const totalExerciseItems = todayChecklist.length;
+            const completedExerciseItems = todayChecklist.filter(i => i.completed).length;
+            const workoutProgressPercent = totalExerciseItems > 0 ? Math.round((completedExerciseItems / totalExerciseItems) * 100) : 0;
+            const totalBurnedCalories = todayChecklist.filter(i => i.completed).reduce((acc, curr) => acc + (curr.calories || 20), 0);
+
+            // Calculate Food Intake Stats
+            const totalConsumedCalories = todayFoodLog.reduce((acc, curr) => acc + (curr.calories || 0), 0);
+
+            const logWorkoutCompletion = () => {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const existingIdx = workoutHistory.findIndex(h => h.date === todayStr);
+
+                if (existingIdx >= 0) {
+                    const updated = [...workoutHistory];
+                    updated[existingIdx] = {
+                        date: todayStr,
+                        calories: totalBurnedCalories,
+                        durationMinutes: completedExerciseItems * 5,
+                        completedCount: completedExerciseItems
+                    };
+                    setWorkoutHistory(updated);
+                } else {
+                    setWorkoutHistory(prev => [...prev, {
+                        date: todayStr,
+                        calories: totalBurnedCalories,
+                        durationMinutes: completedExerciseItems * 5,
+                        completedCount: completedExerciseItems
+                    }]);
+                }
+
+                if (window.confetti) {
+                    window.confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+                }
+            };
+
+            return (
+                <div class="min-h-screen flex flex-col md:flex-row max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 gap-6">
+                    
+                    {/* Sidebar Navigation */}
+                    <aside class="w-full md:w-64 bg-slate-900 border border-slate-800 rounded-3xl p-5 flex flex-col justify-between shadow-2xl shrink-0">
+                        <div>
+                            {/* Logo */}
+                            <div class="flex items-center gap-3 px-2 py-3 mb-6">
+                                <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-400 flex items-center justify-center text-white font-black shadow-lg shadow-blue-500/25">
+                                    <i data-lucide="dumbbell" class="w-6 h-6"></i>
+                                </div>
+                                <div>
+                                    <h1 class="font-black text-2xl tracking-tight text-white leading-none">Ahmd<span class="text-blue-500">FIT</span></h1>
+                                    <p class="text-xs text-blue-400 font-medium mt-1">Olahraga & Nutrisi Diet</p>
+                                </div>
+                            </div>
+
+                            {/* User Quick Info */}
+                            <div class="bg-slate-800/60 rounded-2xl p-3.5 mb-6 border border-slate-700/50 flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-blue-500/20 border border-blue-500/40 flex items-center justify-center text-blue-400 font-bold">
+                                    {userProfile.name.charAt(0)}
+                                </div>
+                                <div class="overflow-hidden">
+                                    <p class="text-sm font-bold text-white truncate">{userProfile.name}</p>
+                                    <p class="text-xs text-slate-400">{userProfile.weight} kg • Goal: {userProfile.goal === 'diet_fat_loss' ? 'Diet' : userProfile.goal === 'muscle_building' ? 'Massa Otot' : 'Lari'}</p>
+                                </div>
+                            </div>
+
+                            {/* Navigation Links */}
+                            <nav class="space-y-1.5">
+                                <button 
+                                    onClick={() => setActiveTab('dashboard')} 
+                                    class={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${activeTab === 'dashboard' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`}
+                                >
+                                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                                    <span>Beranda</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => setActiveTab('checklist')} 
+                                    class={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${activeTab === 'checklist' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`}
+                                >
+                                    <i data-lucide="check-square" class="w-5 h-5"></i>
+                                    <span class="flex-1 text-left">Checklist Olahraga</span>
+                                    {completedExerciseItems > 0 && (
+                                        <span class="text-xs px-2 py-0.5 rounded-full bg-slate-950 text-blue-400 font-bold">{completedExerciseItems}/{totalExerciseItems}</span>
+                                    )}
+                                </button>
+
+                                <button 
+                                    onClick={() => setActiveTab('programs')} 
+                                    class={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${activeTab === 'programs' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`}
+                                >
+                                    <i data-lucide="activity" class="w-5 h-5"></i>
+                                    <span>Rekomendasi Latihan</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => setActiveTab('meals')} 
+                                    class={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${activeTab === 'meals' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`}
+                                >
+                                    <i data-lucide="utensils" class="w-5 h-5"></i>
+                                    <span>Makanan Diet & Kalori</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => setActiveTab('reminders')} 
+                                    class={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${activeTab === 'reminders' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`}
+                                >
+                                    <i data-lucide="bell" class="w-5 h-5"></i>
+                                    <span>Pengingat & Alarm</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => setActiveTab('progress')} 
+                                    class={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${activeTab === 'progress' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`}
+                                >
+                                    <i data-lucide="trending-up" class="w-5 h-5"></i>
+                                    <span>Progres & Analisis</span>
+                                </button>
+
+                                <button 
+                                    onClick={() => setActiveTab('profile')} 
+                                    class={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 ${activeTab === 'profile' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'text-slate-400 hover:text-white hover:bg-slate-800/60'}`}
+                                >
+                                    <i data-lucide="sliders" class="w-5 h-5"></i>
+                                    <span>Profil & Kalkulator</span>
+                                </button>
+                            </nav>
+                        </div>
+
+                        {/* Streak Badge */}
+                        <div class="mt-6 p-4 rounded-2xl bg-gradient-to-r from-blue-600/20 to-cyan-500/20 border border-blue-500/30 text-center">
+                            <div class="flex items-center justify-center gap-2 text-blue-400 font-bold mb-1">
+                                <i data-lucide="flame" class="w-5 h-5 fill-blue-400"></i>
+                                <span>{streak} Hari Beruntun!</span>
+                            </div>
+                            <p class="text-xs text-slate-400">Pertahankan konsistensi gaya hidup sehatmu.</p>
+                        </div>
+                    </aside>
+
+                    {/* Main Content Area */}
+                    <main class="flex-1 space-y-6 overflow-hidden">
+                        {activeTab === 'dashboard' && (
+                            <DashboardView 
+                                userProfile={userProfile}
+                                todayChecklist={todayChecklist}
+                                toggleChecklistItem={toggleChecklistItem}
+                                workoutProgressPercent={workoutProgressPercent}
+                                completedExerciseItems={completedExerciseItems}
+                                totalExerciseItems={totalExerciseItems}
+                                totalBurnedCalories={totalBurnedCalories}
+                                totalConsumedCalories={totalConsumedCalories}
+                                todayFoodLog={todayFoodLog}
+                                reminders={reminders}
+                                setActiveTab={setActiveTab}
+                                setActivePlayer={setActivePlayer}
+                                logWorkoutCompletion={logWorkoutCompletion}
+                            />
+                        )}
+
+                        {activeTab === 'checklist' && (
+                            <ChecklistView 
+                                todayChecklist={todayChecklist}
+                                setTodayChecklist={setTodayChecklist}
+                                toggleChecklistItem={toggleChecklistItem}
+                                workoutProgressPercent={workoutProgressPercent}
+                                setActivePlayer={setActivePlayer}
+                                logWorkoutCompletion={logWorkoutCompletion}
+                            />
+                        )}
+
+                        {activeTab === 'programs' && (
+                            <ProgramsView 
+                                applyPresetProgram={applyPresetProgram}
+                                activeGoal={userProfile.goal}
+                            />
+                        )}
+
+                        {activeTab === 'meals' && (
+                            <MealsView 
+                                todayFoodLog={todayFoodLog}
+                                setTodayFoodLog={setTodayFoodLog}
+                                userProfile={userProfile}
+                                totalConsumedCalories={totalConsumedCalories}
+                            />
+                        )}
+
+                        {activeTab === 'reminders' && (
+                            <RemindersView 
+                                reminders={reminders}
+                                setReminders={setReminders}
+                                triggerNotification={triggerNotification}
+                            />
+                        )}
+
+                        {activeTab === 'progress' && (
+                            <ProgressAnalyticsView 
+                                workoutHistory={workoutHistory}
+                                weightLogs={weightLogs}
+                                setWeightLogs={setWeightLogs}
+                                userProfile={userProfile}
+                                totalConsumedCalories={totalConsumedCalories}
+                                totalBurnedCalories={totalBurnedCalories}
+                            />
+                        )}
+
+                        {activeTab === 'profile' && (
+                            <ProfileCalculatorView 
+                                userProfile={userProfile}
+                                setUserProfile={setUserProfile}
+                            />
+                        )}
+                    </main>
+
+                    {/* MODAL: WORKOUT INTERACTIVE PLAYER */}
+                    {activePlayer && (
+                        <WorkoutPlayerModal 
+                            exercise={activePlayer} 
+                            onClose={() => setActivePlayer(null)}
+                            onComplete={() => {
+                                toggleChecklistItem(activePlayer.id);
+                                setActivePlayer(null);
+                            }}
+                        />
+                    )}
+                </div>
+            );
+        }
+
+        function DashboardView({ userProfile, todayChecklist, toggleChecklistItem, workoutProgressPercent, completedExerciseItems, totalExerciseItems, totalBurnedCalories, totalConsumedCalories, todayFoodLog, reminders, setActiveTab, setActivePlayer, logWorkoutCompletion }) {
+            const nextReminder = reminders.find(r => r.active);
+
+            return (
+                <div class="space-y-6">
+                    {/* Header Banner */}
+                    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-700 via-blue-600 to-cyan-600 p-6 md:p-8 text-white shadow-xl shadow-blue-500/10">
+                        <div class="absolute -right-10 -bottom-10 opacity-15 pointer-events-none">
+                            <i data-lucide="dumbbell" class="w-80 h-80"></i>
+                        </div>
+                        <div class="relative z-10 max-w-2xl">
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/20 backdrop-blur-md text-white mb-3">
+                                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i> AhmdFIT Personal Dashboard
+                            </span>
+                            <h2 class="text-2xl md:text-3xl font-black tracking-tight mb-2">Semangat Hari Ini, {userProfile.name}! 👋</h2>
+                            <p class="text-blue-100 text-sm md:text-base leading-relaxed">
+                                Pantau latihan fisik dan asupan nutrisi harianmu secara seimbang. Tubuh ideal dan sehat dibangun dari kedisiplinan konsisten!
+                            </p>
+                            
+                            <div class="mt-6 flex flex-wrap gap-3">
+                                <button 
+                                    onClick={() => setActiveTab('checklist')}
+                                    class="bg-slate-950 text-white hover:bg-slate-900 px-5 py-2.5 rounded-xl font-bold text-sm shadow-lg flex items-center gap-2 transition"
+                                >
+                                    <i data-lucide="play-circle" class="w-4 h-4 text-blue-400"></i>
+                                    Latihan Olahraga
+                                </button>
+                                <button 
+                                    onClick={() => setActiveTab('meals')}
+                                    class="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white px-5 py-2.5 rounded-xl font-semibold text-sm border border-white/20 flex items-center gap-2 transition"
+                                >
+                                    <i data-lucide="utensils" class="w-4 h-4"></i>
+                                    Jurnal Makanan
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Key Metrics Grid */}
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-semibold text-slate-400">Progres Olahraga</span>
+                                <div class="p-2 rounded-xl bg-blue-500/10 text-blue-400">
+                                    <i data-lucide="check-circle" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                            <p class="text-2xl font-black text-white">{workoutProgressPercent}%</p>
+                            <p class="text-xs text-slate-500 mt-1">{completedExerciseItems} dari {totalExerciseItems} gerakan</p>
+                        </div>
+
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-semibold text-slate-400">Kalori Terbakar</span>
+                                <div class="p-2 rounded-xl bg-orange-500/10 text-orange-400">
+                                    <i data-lucide="flame" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                            <p class="text-2xl font-black text-white">{totalBurnedCalories} <span class="text-sm font-normal text-slate-400">kcal</span></p>
+                            <p class="text-xs text-orange-400/80 mt-1">Hasil latihan hari ini</p>
+                        </div>
+
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-semibold text-slate-400">Asupan Makanan</span>
+                                <div class="p-2 rounded-xl bg-emerald-500/10 text-emerald-400">
+                                    <i data-lucide="utensils" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                            <p class="text-2xl font-black text-white">{totalConsumedCalories} <span class="text-sm font-normal text-slate-400">kcal</span></p>
+                            <p class="text-xs text-emerald-400/80 mt-1">Target: {userProfile.targetCalories || 2000} kcal</p>
+                        </div>
+
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-sm">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-semibold text-slate-400">Pengingat Berikutnya</span>
+                                <div class="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
+                                    <i data-lucide="clock" class="w-4 h-4"></i>
+                                </div>
+                            </div>
+                            <p class="text-xl font-bold text-white truncate">{nextReminder ? nextReminder.time : '--:--'}</p>
+                            <p class="text-xs text-slate-500 mt-1 truncate">{nextReminder ? nextReminder.title : 'Belum disetel'}</p>
+                        </div>
+                    </div>
+
+                    {/* Today's Checklist & Food Snapshot */}
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        
+                        {/* Exercise Quick Checklist */}
+                        <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                            <div class="flex items-center justify-between mb-5">
+                                <div>
+                                    <h3 class="font-bold text-lg text-white">Checklist Olahraga Hari Ini</h3>
+                                    <p class="text-xs text-slate-400">Centang gerakan yang telah kamu selesaikan</p>
+                                </div>
+                                <button 
+                                    onClick={logWorkoutCompletion}
+                                    class="text-xs bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 font-bold px-3 py-1.5 rounded-lg border border-blue-500/30 transition flex items-center gap-1.5"
+                                >
+                                    <i data-lucide="award" class="w-3.5 h-3.5"></i>
+                                    Simpan Sesi
+                                </button>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden mb-6">
+                                <div 
+                                    class="bg-gradient-to-r from-blue-600 to-cyan-400 h-full transition-all duration-500 rounded-full"
+                                    style={{ width: `${workoutProgressPercent}%` }}
+                                ></div>
+                            </div>
+
+                            <div class="space-y-3">
+                                {todayChecklist.length === 0 ? (
+                                    <p class="text-sm text-slate-500 text-center py-6">Belum ada latihan disetel.</p>
+                                ) : (
+                                    todayChecklist.slice(0, 4).map((ex) => (
+                                        <div 
+                                            key={ex.id} 
+                                            class={`p-3.5 rounded-2xl border transition flex items-center justify-between gap-3 ${ex.completed ? 'bg-slate-900/40 border-slate-800/80 opacity-60' : 'bg-slate-800/50 border-slate-700/60 hover:border-slate-600'}`}
+                                        >
+                                            <div class="flex items-center gap-3.5 min-w-0">
+                                                <button 
+                                                    onClick={() => toggleChecklistItem(ex.id)}
+                                                    class={`w-6 h-6 rounded-lg flex items-center justify-center border transition shrink-0 ${ex.completed ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-600 hover:border-blue-400'}`}
+                                                >
+                                                    {ex.completed && <i data-lucide="check" class="w-4 h-4 stroke-[3]"></i>}
+                                                </button>
+
+                                                <div class="w-12 h-12 rounded-xl overflow-hidden bg-slate-950 shrink-0 border border-slate-700/60 shadow-inner">
+                                                    <ExerciseImage src={ex.image} category={ex.category} alt={ex.name} />
+                                                </div>
+
+                                                <div class="truncate">
+                                                    <p class={`text-sm font-bold truncate ${ex.completed ? 'line-through text-slate-400' : 'text-white'}`}>{ex.name}</p>
+                                                    <p class="text-xs text-slate-400">
+                                                        {ex.reps ? `${ex.sets} Set × ${ex.reps} Reps` : `${ex.sets || 1} Set × ${ex.duration} detik`} • ~{ex.calories || 20} kcal
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <button 
+                                                onClick={() => setActivePlayer(ex)}
+                                                class="p-2 rounded-xl bg-slate-700/50 hover:bg-blue-600 hover:text-white text-slate-300 transition shrink-0"
+                                                title="Timer & Panduan Visual"
+                                            >
+                                                <i data-lucide="play" class="w-4 h-4"></i>
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Food Intake Snapshot */}
+                        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-4">
+                                    <h3 class="font-bold text-lg text-white">Ringkasan Makanan</h3>
+                                    <button onClick={() => setActiveTab('meals')} class="text-xs text-blue-400 hover:underline font-semibold">
+                                        Kelola
+                                    </button>
+                                </div>
+
+                                <div class="space-y-3">
+                                    {todayFoodLog.length === 0 ? (
+                                        <p class="text-xs text-slate-500 py-4 text-center">Belum ada makanan dicatat hari ini.</p>
+                                    ) : (
+                                        todayFoodLog.slice(0, 3).map((food) => (
+                                            <div key={food.id} class="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between gap-2">
+                                                <div class="flex items-center gap-2.5 min-w-0">
+                                                    <div class="w-9 h-9 rounded-lg overflow-hidden bg-slate-900 shrink-0 border border-slate-800">
+                                                        <ExerciseImage src={food.image} category="Makanan" alt={food.name} />
+                                                    </div>
+                                                    <div class="truncate">
+                                                        <p class="text-xs font-bold text-white truncate">{food.name}</p>
+                                                        <p class="text-[10px] text-slate-400">{food.mealType || 'Makan'}</p>
+                                                    </div>
+                                                </div>
+                                                <span class="text-xs font-extrabold text-emerald-400 font-mono shrink-0">+{food.calories} kcal</span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+
+                            <div class="mt-4 pt-4 border-t border-slate-800">
+                                <div class="flex justify-between items-center text-xs text-slate-400 mb-1">
+                                    <span>Net Kalori Hari Ini:</span>
+                                    <span class="font-mono font-bold text-white">{totalConsumedCalories - totalBurnedCalories} kcal</span>
+                                </div>
+                                <p class="text-[10px] text-slate-500 leading-normal">
+                                    (Masuk {totalConsumedCalories} kcal - Terbakar {totalBurnedCalories} kcal)
+                                </p>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            );
+        }
+
+        function ChecklistView({ todayChecklist, setTodayChecklist, toggleChecklistItem, workoutProgressPercent, setActivePlayer, logWorkoutCompletion }) {
+            const [newItemName, setNewItemName] = React.useState('');
+
+            const handleAddCustom = (e) => {
+                e.preventDefault();
+                if (!newItemName.trim()) return;
+                const newEx = {
+                    id: 'custom_' + Date.now(),
+                    name: newItemName,
+                    category: 'Kustom',
+                    reps: 12,
+                    sets: 3,
+                    calories: 25,
+                    desc: 'Gerakan kustom tambahan harian AhmdFIT.',
+                    completed: false
+                };
+                setTodayChecklist(prev => [...prev, newEx]);
+                setNewItemName('');
+                playBeep(650, 0.15, 'sine');
+            };
+
+            const handleDelete = (id) => {
+                setTodayChecklist(prev => prev.filter(i => i.id !== id));
+            };
+
+            return (
+                <div class="space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900 p-6 border border-slate-800 rounded-3xl">
+                        <div>
+                            <h2 class="text-xl font-extrabold text-white">Checklist Olahraga Harian</h2>
+                            <p class="text-xs text-slate-400 mt-1">Selesaikan daftar gerakan dengan melihat gambar instruksi visual di setiap kartu latihan</p>
+                        </div>
+                        <button 
+                            onClick={logWorkoutCompletion}
+                            class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl shadow-lg shadow-blue-500/20 text-sm flex items-center justify-center gap-2 transition"
+                        >
+                            <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                            Selesaikan Semua & Simpan Log
+                        </button>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between gap-4">
+                        <div class="space-y-1">
+                            <p class="text-xs font-semibold text-slate-400">Total Pencapaian Olahraga Hari Ini</p>
+                            <p class="text-2xl font-black text-blue-400">{workoutProgressPercent}% Terpenuhi</p>
+                        </div>
+                        <div class="w-32 h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                            <div class="bg-blue-500 h-full transition-all duration-300" style={{ width: `${workoutProgressPercent}%` }}></div>
+                        </div>
+                    </div>
+
+                    {/* Add Custom Exercise Form */}
+                    <form onSubmit={handleAddCustom} class="bg-slate-900 border border-slate-800 p-4 rounded-2xl flex flex-col sm:flex-row gap-3">
+                        <input 
+                            type="text" 
+                            placeholder="+ Tambah latihan sendiri (misal: Skipping, Plank 1 Menit, Pull-up)..." 
+                            value={newItemName}
+                            onChange={(e) => setNewItemName(e.target.value)}
+                            class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                        />
+                        <button 
+                            type="submit"
+                            class="bg-slate-800 hover:bg-slate-700 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition"
+                        >
+                            Tambah Gerakan
+                        </button>
+                    </form>
+
+                    {/* Exercise Cards Grid */}
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                        {todayChecklist.map((ex) => (
+                            <div 
+                                key={ex.id}
+                                class={`rounded-3xl border overflow-hidden flex flex-col justify-between transition-all duration-300 shadow-lg ${ex.completed ? 'bg-slate-900/40 border-slate-800 opacity-60' : 'bg-slate-900 border-slate-800 hover:border-slate-700 hover:shadow-blue-500/5'}`}
+                            >
+                                <div class="relative h-40 w-full bg-slate-950 overflow-hidden group">
+                                    <ExerciseImage src={ex.image} category={ex.category} alt={ex.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                                    <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent"></div>
+                                    
+                                    <div class="absolute top-3 left-3 right-3 flex items-center justify-between">
+                                        <span class="text-[10px] font-extrabold uppercase tracking-wider px-2.5 py-1 rounded-lg bg-slate-950/80 backdrop-blur-md text-blue-400 border border-blue-500/30">
+                                            {ex.category || 'Latihan'}
+                                        </span>
+                                        <button 
+                                            onClick={() => handleDelete(ex.id)}
+                                            class="p-1.5 rounded-lg bg-slate-950/70 hover:bg-rose-500 text-slate-300 hover:text-white transition backdrop-blur-md"
+                                            title="Hapus"
+                                        >
+                                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                                        </button>
+                                    </div>
+
+                                    <div class="absolute bottom-2 left-3 right-3">
+                                        <h3 class={`font-black text-lg text-white drop-shadow-md ${ex.completed ? 'line-through text-slate-400' : ''}`}>
+                                            {ex.name}
+                                        </h3>
+                                    </div>
+                                </div>
+
+                                <div class="p-4 flex-1 flex flex-col justify-between space-y-4">
+                                    <p class="text-xs text-slate-400 leading-relaxed">
+                                        {ex.desc || 'Lakukan gerakan ini dengan teknik dan posisi tubuh yang sesuai.'}
+                                    </p>
+
+                                    <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
+                                        <div class="text-xs text-slate-300 font-bold bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">
+                                            {ex.reps ? `${ex.sets} Set × ${ex.reps} Reps` : `${ex.duration} Detik`}
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <button 
+                                                onClick={() => setActivePlayer(ex)}
+                                                class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-400 text-xs font-bold transition flex items-center gap-1.5"
+                                                title="Timer & Panduan Visual"
+                                            >
+                                                <i data-lucide="timer" class="w-3.5 h-3.5"></i>
+                                                Timer
+                                            </button>
+                                            <button 
+                                                onClick={() => toggleChecklistItem(ex.id)}
+                                                class={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${ex.completed ? 'bg-slate-800 text-slate-300' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
+                                            >
+                                                <i data-lucide={ex.completed ? 'rotate-ccw' : 'check'} class="w-3.5 h-3.5"></i>
+                                                {ex.completed ? 'Batal' : 'Selesai'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function ProgramsView({ applyPresetProgram, activeGoal }) {
+            return (
+                <div class="space-y-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                        <h2 class="text-xl font-extrabold text-white mb-1">Rekomendasi Program Olahraga</h2>
+                        <p class="text-xs text-slate-400">
+                            Pilih program rekomendasi AhmdFIT sesuai dengan target fisikmu (Diet, Otot, atau Lari).
+                        </p>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {PRESET_PROGRAMS.map((prog) => (
+                            <div 
+                                key={prog.id}
+                                class={`bg-slate-900 border rounded-3xl p-6 flex flex-col justify-between relative overflow-hidden transition duration-300 hover:-translate-y-1 ${activeGoal === prog.id ? 'border-blue-500 shadow-xl shadow-blue-500/10' : 'border-slate-800 hover:border-slate-700'}`}
+                            >
+                                <div class={`absolute top-0 left-0 right-0 h-2 bg-gradient-to-r ${prog.color}`}></div>
+
+                                <div>
+                                    <div class="flex items-center justify-between mb-4 mt-2">
+                                        <span class="text-xs font-bold px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                                            {prog.category}
+                                        </span>
+                                        {activeGoal === prog.id && (
+                                            <span class="text-xs font-bold px-2.5 py-0.5 rounded-md bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                                Aktif
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <h3 class="text-lg font-bold text-white mb-2 leading-snug">{prog.title}</h3>
+                                    <p class="text-xs text-slate-400 leading-relaxed mb-4">{prog.description}</p>
+
+                                    <div class="bg-slate-950/60 rounded-2xl p-4 border border-slate-800/80 space-y-2 mb-6">
+                                        <div class="text-xs text-slate-300 flex items-start gap-2">
+                                            <i data-lucide="target" class="w-4 h-4 text-blue-400 shrink-0 mt-0.5"></i>
+                                            <span><strong>Target:</strong> {prog.targetGoal}</span>
+                                        </div>
+                                        <div class="text-xs text-slate-300 flex items-start gap-2">
+                                            <i data-lucide="calendar" class="w-4 h-4 text-cyan-400 shrink-0 mt-0.5"></i>
+                                            <span><strong>Frekuensi:</strong> {prog.recommendedDays}</span>
+                                        </div>
+                                    </div>
+
+                                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3">Daftar Gerakan ({prog.exercises.length} Latihan):</h4>
+                                    <ul class="space-y-2.5 mb-6">
+                                        {prog.exercises.map((ex) => (
+                                            <li key={ex.id} class="text-xs text-slate-300 flex items-center gap-3 bg-slate-800/40 p-2 rounded-xl border border-slate-800">
+                                                <div class="w-10 h-10 rounded-lg overflow-hidden bg-slate-950 shrink-0 border border-slate-700">
+                                                    <ExerciseImage src={ex.image} category={ex.category} alt={ex.name} />
+                                                </div>
+                                                <div class="flex-1 truncate">
+                                                    <p class="font-medium truncate text-white">{ex.name}</p>
+                                                    <p class="text-[10px] text-slate-400 font-mono">
+                                                        {ex.reps ? `${ex.sets}x${ex.reps} reps` : `${ex.duration} detik`}
+                                                    </p>
+                                                </div>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+
+                                <button 
+                                    onClick={() => applyPresetProgram(prog.id)}
+                                    class={`w-full py-3 rounded-2xl font-bold text-sm transition flex items-center justify-center gap-2 ${activeGoal === prog.id ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-slate-800 text-white hover:bg-slate-700'}`}
+                                >
+                                    <i data-lucide="download" class="w-4 h-4"></i>
+                                    Gunakan Program Ini
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function MealsView({ todayFoodLog, setTodayFoodLog, userProfile, totalConsumedCalories }) {
+            const [customFoodName, setCustomFoodName] = React.useState('');
+            const [customCalories, setCustomCalories] = React.useState('');
+            const [mealType, setMealType] = React.useState('Makan Siang');
+
+            const addCustomMeal = (e) => {
+                e.preventDefault();
+                if (!customFoodName.trim() || !customCalories) return;
+                const newFood = {
+                    id: 'custom_meal_' + Date.now(),
+                    name: customFoodName,
+                    calories: parseInt(customCalories),
+                    protein: 15,
+                    carbs: 30,
+                    fat: 8,
+                    mealType,
+                    image: CATEGORY_IMAGES['Makanan'],
+                    desc: 'Makanan kustom tambahan harian.'
+                };
+                setTodayFoodLog(prev => [...prev, newFood]);
+                setCustomFoodName('');
+                setCustomCalories('');
+                playBeep(600, 0.15, 'sine');
+            };
+
+            const addMealFromPreset = (item) => {
+                const newFood = {
+                    ...item,
+                    id: 'preset_meal_' + Date.now() + Math.random()
+                };
+                setTodayFoodLog(prev => [...prev, newFood]);
+                playBeep(700, 0.15, 'sine');
+            };
+
+            const deleteFoodLog = (id) => {
+                setTodayFoodLog(prev => prev.filter(f => f.id !== id));
+            };
+
+            const targetCal = userProfile.targetCalories || 2000;
+            const percentage = Math.min(Math.round((totalConsumedCalories / targetCal) * 100), 100);
+
+            return (
+                <div class="space-y-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                        <h2 class="text-xl font-extrabold text-white mb-1">Rekomendasi & Jurnal Makanan Diet</h2>
+                        <p class="text-xs text-slate-400">Pilih menu makanan sehat sesuai program targetmu dan catat total asupan kalori harian.</p>
+                    </div>
+
+                    {/* Daily Calorie Goal Progress Card */}
+                    <div class="bg-gradient-to-r from-blue-900/60 via-slate-900 to-slate-900 border border-blue-800/60 p-6 rounded-3xl space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <span class="text-xs text-slate-400 font-semibold">Target Asupan Harian</span>
+                                <h3 class="text-2xl font-black text-white">{totalConsumedCalories} <span class="text-sm font-normal text-slate-400">/ {targetCal} kcal</span></h3>
+                            </div>
+                            <span class="text-lg font-black text-blue-400 font-mono">{percentage}%</span>
+                        </div>
+
+                        <div class="w-full bg-slate-950 h-3.5 rounded-full overflow-hidden border border-slate-800">
+                            <div class="bg-gradient-to-r from-blue-500 to-cyan-400 h-full transition-all duration-500" style={{ width: `${percentage}%` }}></div>
+                        </div>
+                    </div>
+
+                    {/* Input Custom Food Form */}
+                    <form onSubmit={addMealFromPreset} class="hidden"></form>
+                    <form onSubmit={addCustomMeal} class="bg-slate-900 border border-slate-800 p-5 rounded-3xl space-y-3">
+                        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                            <i data-lucide="plus-circle" class="w-4 h-4 text-blue-400"></i>
+                            Catat Makanan Lainnya (Kustom)
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <input 
+                                type="text" 
+                                placeholder="Nama makanan (misal: Nasi Goreng Telur)..."
+                                value={customFoodName}
+                                onChange={(e) => setCustomFoodName(e.target.value)}
+                                class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                            />
+                            <input 
+                                type="number" 
+                                placeholder="Jumlah Kalori (kcal)..."
+                                value={customCalories}
+                                onChange={(e) => setCustomCalories(e.target.value)}
+                                class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                            />
+                            <select 
+                                value={mealType}
+                                onChange={(e) => setMealType(e.target.value)}
+                                class="bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                            >
+                                <option value="Sarapan">Sarapan</option>
+                                <option value="Makan Siang">Makan Siang</option>
+                                <option value="Makan Malam">Makan Malam</option>
+                                <option value="Camilan Sehat">Camilan Sehat</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition">
+                            Tambah ke Jurnal Makan
+                        </button>
+                    </form>
+
+                    {/* Today Logged Foods Section */}
+                    <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
+                        <h3 class="text-sm font-bold text-white">Makanan Terpenuhi Hari Ini ({todayFoodLog.length})</h3>
+                        {todayFoodLog.length === 0 ? (
+                            <p class="text-xs text-slate-500 py-4 text-center">Belum ada makanan dicatat hari ini.</p>
+                        ) : (
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {todayFoodLog.map((item) => (
+                                    <div key={item.id} class="p-3.5 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
+                                        <div class="flex items-center gap-3 min-w-0">
+                                            <div class="w-12 h-12 rounded-xl overflow-hidden bg-slate-900 shrink-0 border border-slate-800">
+                                                <ExerciseImage src={item.image} category="Makanan" alt={item.name} />
+                                            </div>
+                                            <div class="truncate">
+                                                <p class="text-sm font-bold text-white truncate">{item.name}</p>
+                                                <p class="text-xs text-slate-400">{item.mealType} • {item.calories} kcal</p>
+                                            </div>
+                                        </div>
+                                        <button 
+                                            onClick={() => deleteFoodLog(item.id)}
+                                            class="p-2 text-slate-500 hover:text-rose-400 transition"
+                                        >
+                                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Preset Diet Meal Plans Recommendations */}
+                    <div class="space-y-6 pt-4">
+                        <h3 class="text-lg font-black text-white">Katalog Rekomendasi Menu Diet Sehat</h3>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            {PRESET_MEALS.map((plan) => (
+                                <div key={plan.id} class="bg-slate-900 border border-slate-800 rounded-3xl p-6 space-y-5 flex flex-col justify-between">
+                                    <div>
+                                        <span class="text-xs font-bold px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                                            {plan.category}
+                                        </span>
+
+                                        <p class="text-xs text-slate-400 mt-3 leading-relaxed">{plan.description}</p>
+
+                                        <div class="mt-4 space-y-3">
+                                            {plan.items.map((m) => (
+                                                <div key={m.id} class="p-3 bg-slate-950 rounded-2xl border border-slate-800 flex items-center justify-between gap-3">
+                                                    <div class="flex items-center gap-3 min-w-0">
+                                                        <div class="w-11 h-11 rounded-xl overflow-hidden bg-slate-900 shrink-0 border border-slate-800">
+                                                            <ExerciseImage src={m.image} category="Makanan" alt={m.name} />
+                                                        </div>
+                                                        <div class="truncate">
+                                                            <p class="text-xs font-bold text-white truncate">{m.name}</p>
+                                                            <p class="text-[10px] text-blue-400 font-mono">{m.mealType} • {m.calories} kcal</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <button 
+                                                        onClick={() => addMealFromPreset(m)}
+                                                        class="p-2 rounded-xl bg-blue-600/20 hover:bg-blue-600 text-blue-400 hover:text-white transition shrink-0"
+                                                        title="Tambah ke Jurnal Makan"
+                                                    >
+                                                        <i data-lucide="plus" class="w-4 h-4"></i>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function RemindersView({ reminders, setReminders, triggerNotification }) {
+            const [time, setTime] = React.useState('06:30');
+            const [title, setTitle] = React.useState('');
+            const [note, setNote] = React.useState('');
+
+            const handleAdd = (e) => {
+                e.preventDefault();
+                if (!title.trim()) return;
+                const newRem = {
+                    id: 'rem_' + Date.now(),
+                    title,
+                    time,
+                    active: true,
+                    note: note || 'Waktunya olahraga AhmdFIT!'
+                };
+                setReminders(prev => [...prev, newRem]);
+                setTitle('');
+                setNote('');
+                playBeep(800, 0.2, 'sine');
+            };
+
+            const toggleActive = (id) => {
+                setReminders(prev => prev.map(r => r.id === id ? { ...r, active: !r.active } : r));
+            };
+
+            const deleteReminder = (id) => {
+                setReminders(prev => prev.filter(r => r.id !== id));
+            };
+
+            return (
+                <div class="space-y-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                        <h2 class="text-xl font-extrabold text-white mb-1">Pengingat & Alarm Olahraga</h2>
+                        <p class="text-xs text-slate-400">Atur jadwal alarm otomatis agar kamu tidak pernah melewatkan waktu latihan.</p>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-blue-900/40 to-slate-900 border border-blue-800/50 p-4 rounded-2xl flex items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <i data-lucide="bell-ring" class="w-5 h-5 text-blue-400"></i>
+                            <div>
+                                <p class="text-sm font-bold text-white">Izin Notifikasi Browser</p>
+                                <p class="text-xs text-slate-400">Aktifkan notifikasi untuk menerima pengingat saat aplikasi terbuka.</p>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => triggerNotification("Tes Pengingat AhmdFIT", "Notifikasi aktif sempurna!")}
+                            class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shrink-0 transition"
+                        >
+                            Tes Notifikasi
+                        </button>
+                    </div>
+
+                    <form onSubmit={handleAdd} class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
+                        <h3 class="text-sm font-bold text-white">Tambah Jadwal Pengingat Baru</h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                                <label class="text-xs text-slate-400 mb-1 block">Waktu Alarm</label>
+                                <input 
+                                    type="time" 
+                                    value={time}
+                                    onChange={(e) => setTime(e.target.value)}
+                                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-400 mb-1 block">Nama Sesi Olahraga</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Contoh: Jogging Pagi AhmdFIT" 
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+                            <div>
+                                <label class="text-xs text-slate-400 mb-1 block">Catatan Tambahan</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Contoh: Pakai sepatu lari & minum air hangat" 
+                                    value={note}
+                                    onChange={(e) => setNote(e.target.value)}
+                                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white placeholder-slate-600 focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+                        </div>
+                        <button 
+                            type="submit"
+                            class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition flex items-center justify-center gap-2"
+                        >
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            Simpan Pengingat
+                        </button>
+                    </form>
+
+                    <div class="space-y-3">
+                        {reminders.map((rem) => (
+                            <div key={rem.id} class="bg-slate-900 border border-slate-800 p-5 rounded-2xl flex items-center justify-between gap-4">
+                                <div class="flex items-center gap-4">
+                                    <div class="text-2xl font-black text-blue-400 font-mono bg-slate-950 px-3 py-2 rounded-xl border border-slate-800">
+                                        {rem.time}
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-white text-base">{rem.title}</h4>
+                                        <p class="text-xs text-slate-400">{rem.note}</p>
+                                    </div>
+                                </div>
+
+                                <div class="flex items-center gap-3">
+                                    <button 
+                                        onClick={() => toggleActive(rem.id)}
+                                        class={`px-3 py-1.5 rounded-xl text-xs font-bold transition ${rem.active ? 'bg-blue-500/20 text-blue-400 border border-blue-500/40' : 'bg-slate-800 text-slate-500'}`}
+                                    >
+                                        {rem.active ? 'Aktif' : 'Mati'}
+                                    </button>
+                                    <button 
+                                        onClick={() => deleteReminder(rem.id)}
+                                        class="p-2 text-slate-500 hover:text-rose-400 transition"
+                                    >
+                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        }
+
+        function ProgressAnalyticsView({ workoutHistory, weightLogs, setWeightLogs, userProfile, totalConsumedCalories, totalBurnedCalories }) {
+            const chartRef = React.useRef(null);
+            const chartInstance = React.useRef(null);
+
+            const [newWeight, setNewWeight] = React.useState('');
+
+            React.useEffect(() => {
+                if (!chartRef.current) return;
+
+                if (chartInstance.current) {
+                    chartInstance.current.destroy();
+                }
+
+                const ctx = chartRef.current.getContext('2d');
+                chartInstance.current = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: workoutHistory.map(h => h.date),
+                        datasets: [{
+                            label: 'Kalori Terbakar (kcal)',
+                            data: workoutHistory.map(h => h.calories),
+                            backgroundColor: '#3b82f6',
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { labels: { color: '#94a3b8' } }
+                        },
+                        scales: {
+                            x: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } },
+                            y: { ticks: { color: '#94a3b8' }, grid: { color: '#1e293b' } }
+                        }
+                    }
+                });
+
+                return () => {
+                    if (chartInstance.current) chartInstance.current.destroy();
+                };
+            }, [workoutHistory]);
+
+            const handleAddWeight = (e) => {
+                e.preventDefault();
+                if (!newWeight || isNaN(newWeight)) return;
+                const todayStr = new Date().toISOString().split('T')[0];
+                setWeightLogs(prev => [...prev, { date: todayStr, weight: parseFloat(newWeight) }]);
+                setNewWeight('');
+            };
+
+            return (
+                <div class="space-y-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                        <h2 class="text-xl font-extrabold text-white mb-1">Hasil Progres & Analisis AhmdFIT</h2>
+                        <p class="text-xs text-slate-400">Pantau statistik latihan harian, kalori terbakar, dan riwayat berat badanmu.</p>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
+                        <h3 class="text-sm font-bold text-white">Grafik Kalori Terbakar Olahraga</h3>
+                        <div class="w-full h-64">
+                            <canvas ref={chartRef}></canvas>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Weight Tracker Section */}
+                        <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
+                            <h3 class="text-sm font-bold text-white">Catat Berat Badan Terbaru</h3>
+                            <form onSubmit={handleAddWeight} class="flex gap-2">
+                                <input 
+                                    type="number" 
+                                    step="0.1"
+                                    placeholder="Berat (kg)..."
+                                    value={newWeight}
+                                    onChange={(e) => setNewWeight(e.target.value)}
+                                    class="flex-1 bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                />
+                                <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-4 py-2.5 rounded-xl text-sm transition">
+                                    Simpan Log
+                                </button>
+                            </form>
+
+                            <div class="space-y-2 mt-4 max-h-48 overflow-y-auto">
+                                {weightLogs.slice().reverse().map((log, idx) => (
+                                    <div key={idx} class="flex justify-between items-center text-xs p-3 bg-slate-950 rounded-xl border border-slate-800">
+                                        <span class="text-slate-400">{log.date}</span>
+                                        <span class="font-bold text-white">{log.weight} kg</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Summary Badges */}
+                        <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4 flex flex-col justify-between">
+                            <div>
+                                <h3 class="text-sm font-bold text-white mb-2">Pencapaian & Milestone</h3>
+                                <p class="text-xs text-slate-400">Setiap sesi mendekatkanmu ke bentuk tubuh impian!</p>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+                                    <i data-lucide="trophy" class="w-6 h-6 text-amber-400 mx-auto mb-1"></i>
+                                    <p class="text-lg font-black text-white">{workoutHistory.length}</p>
+                                    <p class="text-[11px] text-slate-400">Sesi Latihan Selesai</p>
+                                </div>
+                                <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center">
+                                    <i data-lucide="flame" class="w-6 h-6 text-orange-500 mx-auto mb-1"></i>
+                                    <p class="text-lg font-black text-white">
+                                        {workoutHistory.reduce((acc, curr) => acc + (curr.calories || 0), 0)}
+                                    </p>
+                                    <p class="text-[11px] text-slate-400">Total Kalori Terbakar</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function ProfileCalculatorView({ userProfile, setUserProfile }) {
+            const [name, setName] = React.useState(userProfile.name);
+            const [weight, setWeight] = React.useState(userProfile.weight);
+            const [height, setHeight] = React.useState(userProfile.height);
+            const [age, setAge] = React.useState(userProfile.age);
+            const [targetCalories, setTargetCalories] = React.useState(userProfile.targetCalories || 2000);
+
+            const handleSave = (e) => {
+                e.preventDefault();
+                setUserProfile(prev => ({
+                    ...prev,
+                    name,
+                    weight: parseFloat(weight),
+                    height: parseFloat(height),
+                    age: parseInt(age),
+                    targetCalories: parseInt(targetCalories)
+                }));
+                playBeep(700, 0.15, 'sine');
+                alert('Profil AhmdFIT berhasil diperbarui!');
+            };
+
+            const heightInMeters = height / 100;
+            const bmi = heightInMeters > 0 ? (weight / (heightInMeters * heightInMeters)).toFixed(1) : 0;
+
+            let bmiCategory = 'Normal';
+            let bmiColor = 'text-blue-400';
+            if (bmi < 18.5) { bmiCategory = 'Kekurangan Berat Badan'; bmiColor = 'text-amber-400'; }
+            else if (bmi >= 23 && bmi < 28) { bmiCategory = 'Kelebihan Berat Badan'; bmiColor = 'text-amber-500'; }
+            else if (bmi >= 28) { bmiCategory = 'Obesitas'; bmiColor = 'text-rose-500'; }
+
+            const waterNeeds = Math.round(weight * 35);
+
+            return (
+                <div class="space-y-6">
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6">
+                        <h2 class="text-xl font-extrabold text-white mb-1">Profil & Kalkulator Kebugaran AhmdFIT</h2>
+                        <p class="text-xs text-slate-400">Atur parameter tubuh dan lihat kalkulasi indeks massa tubuh (BMI).</p>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <form onSubmit={handleSave} class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-4">
+                            <h3 class="text-sm font-bold text-white">Data Diri & Fisik</h3>
+
+                            <div>
+                                <label class="text-xs text-slate-400 mb-1 block">Nama Pengguna</label>
+                                <input 
+                                    type="text" 
+                                    value={name} 
+                                    onChange={(e) => setName(e.target.value)}
+                                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label class="text-xs text-slate-400 mb-1 block">Berat (kg)</label>
+                                    <input 
+                                        type="number" 
+                                        value={weight} 
+                                        onChange={(e) => setWeight(e.target.value)}
+                                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="text-xs text-slate-400 mb-1 block">Tinggi (cm)</label>
+                                    <input 
+                                        type="number" 
+                                        value={height} 
+                                        onChange={(e) => setHeight(e.target.value)}
+                                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label class="text-xs text-slate-400 mb-1 block">Usia</label>
+                                    <input 
+                                        type="number" 
+                                        value={age} 
+                                        onChange={(e) => setAge(e.target.value)}
+                                        class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="text-xs text-slate-400 mb-1 block">Target Kalori Harian (kcal)</label>
+                                <input 
+                                    type="number" 
+                                    value={targetCalories} 
+                                    onChange={(e) => setTargetCalories(e.target.value)}
+                                    class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+
+                            <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-xl text-sm transition">
+                                Simpan Perubahan Profil
+                            </button>
+                        </form>
+
+                        <div class="bg-slate-900 border border-slate-800 p-6 rounded-3xl space-y-6">
+                            <h3 class="text-sm font-bold text-white">Analisis Kesehatan Otomatis</h3>
+
+                            <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                                <span class="text-xs text-slate-400">Indeks Massa Tubuh (BMI)</span>
+                                <div class="flex items-baseline gap-3">
+                                    <span class="text-3xl font-black text-white">{bmi}</span>
+                                    <span class={`text-sm font-bold ${bmiColor}`}>{bmiCategory}</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Kategori standar kesehatan Asia-Pasifik.</p>
+                            </div>
+
+                            <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-2">
+                                <span class="text-xs text-slate-400">Rekomendasi Air Minum Harian</span>
+                                <div class="flex items-baseline gap-2">
+                                    <span class="text-2xl font-black text-cyan-400">{waterNeeds}</span>
+                                    <span class="text-xs text-slate-400">ml / hari (~{Math.round(waterNeeds / 250)} gelas)</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500">Minum air yang cukup untuk mencegah dehidrasi saat berolahraga.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function WorkoutPlayerModal({ exercise, onClose, onComplete }) {
+            const [timeLeft, setTimeLeft] = React.useState(exercise.duration || 30);
+            const [isRunning, setIsRunning] = React.useState(false);
+
+            React.useEffect(() => {
+                let timer;
+                if (isRunning && timeLeft > 0) {
+                    timer = setInterval(() => {
+                        setTimeLeft(prev => {
+                            if (prev <= 1) {
+                                playBeep(900, 0.4, 'sine');
+                                return 0;
+                            }
+                            if (prev <= 4) playBeep(440, 0.1, 'sine');
+                            return prev - 1;
+                        });
+                    }, 1000);
+                }
+                return () => clearInterval(timer);
+            }, [isRunning, timeLeft]);
+
+            return (
+                <div class="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
+                    <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 text-center overflow-hidden">
+                        
+                        <div class="relative h-44 -mx-6 -mt-6 bg-slate-950 mb-2 overflow-hidden">
+                            <ExerciseImage src={exercise.image} category={exercise.category} alt={exercise.name} className="w-full h-full object-cover" />
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent"></div>
+                            
+                            <span class="absolute top-4 left-4 text-xs font-bold uppercase tracking-wider text-blue-400 px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur-md border border-blue-500/30">
+                                {exercise.category || 'AhmdFIT Session'}
+                            </span>
+                        </div>
+
+                        <div>
+                            <h3 class="text-2xl font-black text-white">{exercise.name}</h3>
+                            <p class="text-xs text-slate-400 mt-1 leading-relaxed">{exercise.desc}</p>
+                        </div>
+
+                        <div class="w-40 h-40 rounded-full bg-slate-950 border-4 border-blue-500/40 flex flex-col items-center justify-center mx-auto shadow-inner shadow-blue-500/20">
+                            <span class="text-4xl font-black text-blue-400 font-mono">{timeLeft}s</span>
+                            <span class="text-[11px] text-slate-400 mt-1 font-medium">
+                                {exercise.reps ? `${exercise.sets} Set × ${exercise.reps} Reps` : 'Hitungan Mundur'}
+                            </span>
+                        </div>
+
+                        <div class="flex items-center justify-center gap-3">
+                            <button 
+                                onClick={() => setIsRunning(!isRunning)}
+                                class={`px-6 py-3 rounded-2xl font-bold text-sm transition flex items-center gap-2 shadow-lg ${isRunning ? 'bg-amber-500 text-slate-950' : 'bg-blue-600 text-white hover:bg-blue-500'}`}
+                            >
+                                <i data-lucide={isRunning ? 'pause' : 'play'} class="w-4 h-4"></i>
+                                {isRunning ? 'Jeda' : 'Mulai Timer'}
+                            </button>
+
+                            <button 
+                                onClick={() => { setTimeLeft(exercise.duration || 30); setIsRunning(false); }}
+                                class="p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl transition"
+                                title="Reset"
+                            >
+                                <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                        <div class="pt-4 border-t border-slate-800 flex items-center justify-between">
+                            <button 
+                                onClick={onClose}
+                                class="text-xs text-slate-400 hover:text-white transition font-semibold"
+                            >
+                                Tutup
+                            </button>
+                            <button 
+                                onClick={onComplete}
+                                class="bg-blue-600/20 text-blue-400 hover:bg-blue-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                            >
+                                <i data-lucide="check" class="w-4 h-4"></i>
+                                Selesai Gerakan Ini
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
